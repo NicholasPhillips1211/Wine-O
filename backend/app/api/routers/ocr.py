@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from backend.app.schemas_jobs import JobStatusResponse, JobSubmissionResponse
 from backend.app.schemas_ocr import OCRAnalysisRequest, OCRAnalysisResult, OCRRequest, OCRResult, ParsedWineLabel, TextBlock
 from backend.app.services.job_service import JobService
-from backend.app.schemas_ocr import OCRAnalysisRequest, OCRAnalysisResult, OCRRequest, OCRResult, ParsedWineLabel, TextBlock
 from backend.app.services.ocr_service import OCRService
 
 
