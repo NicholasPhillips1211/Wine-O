@@ -19,6 +19,5 @@ jobs:
           pip install -r backend/requirements.txt
       - name: Run backend tests
         run: |
-          pytest backend/tests -q
-        env:
-          PYTHONPATH: ${{ github.workspace }}
+          cd backend
+          pytest tests -q
