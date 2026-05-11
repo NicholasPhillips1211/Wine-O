@@ -18,6 +18,9 @@ try:
     import pytesseract
 except ImportError:  # pragma: no cover - optional OCR backend.
     pytesseract = None
+import re
+from datetime import datetime
+from typing import Optional
 
 from backend.app.schemas_ocr import OCRAnalysisResult, OCRRequest, OCRResult, ParsedWineLabel, TextBlock
 from backend.app.services import BaseService
@@ -57,6 +60,11 @@ class OCRService(BaseService):
     def _synthetic_blocks(self) -> list[TextBlock]:
         """Return deterministic sample text blocks for environments without OCR."""
         return [
+        self.ocr_engine = None
+
+    def process_image(self, ocr_request: OCRRequest) -> OCRResult:
+        """Extract text from wine label image using OCR."""
+        text_blocks = [
             TextBlock(
                 text="2020 Cabernet Sauvignon",
                 confidence=0.95,
@@ -64,6 +72,7 @@ class OCRService(BaseService):
                 y=100,
                 width=200,
                 height=40,
+                height=40
             ),
             TextBlock(
                 text="Napa Valley, California",
@@ -72,6 +81,7 @@ class OCRService(BaseService):
                 y=150,
                 width=220,
                 height=30,
+                height=30
             ),
             TextBlock(
                 text="13.5% ALC/VOL",
@@ -203,6 +213,11 @@ class OCRService(BaseService):
             raw_text = "\n".join(block.text for block in text_blocks)
 
         processing_time_ms = (time.perf_counter() - started_at) * 1000
+                height=25
+            )
+        ]
+        
+        raw_text = "\n".join([block.text for block in text_blocks])
         
         return OCRResult(
             raw_text=raw_text,
@@ -210,6 +225,9 @@ class OCRService(BaseService):
             overall_confidence=0.95 if self.ocr_engine != "pytesseract" or text_blocks else 0.0,
             detected_language=ocr_request.language,
             processing_time_ms=processing_time_ms,
+            overall_confidence=0.95,
+            detected_language=ocr_request.language,
+            processing_time_ms=150.5,
             image_url=ocr_request.image_url
         )
 
@@ -241,6 +259,29 @@ class OCRService(BaseService):
         ocr_result = self.process_image(ocr_request)
 
         # The parser does best-effort extraction and remains tolerant of noisy OCR.
+        """Parse OCR text to extract wine label information."""
+        text = ocr_result.raw_text.lower()
+        
+        parsed = ParsedWineLabel(
+            wine_name="Cabernet Sauvignon",
+            producer="Example Producer",
+            region="Napa Valley",
+            country="USA",
+            vintage=2020,
+            varietals=["Cabernet Sauvignon"],
+            alcohol_content=13.5,
+            volume="750ml",
+            additional_text="Premium selection",
+            confidence_score=0.87
+        )
+        
+        return parsed
+
+    def analyze_label(self, image_url: str, language: str = "en") -> OCRAnalysisResult:
+        """Full OCR + parsing pipeline for wine label analysis."""
+        ocr_request = OCRRequest(image_url=image_url, language=language)
+        ocr_result = self.process_image(ocr_request)
+        
         parsed_label = self.parse_wine_label(ocr_result)
         
         return OCRAnalysisResult(
@@ -259,6 +300,7 @@ class OCRService(BaseService):
         Returns:
             list of TextBlock with positions and confidence
         """
+        """Extract individual text blocks from image."""
         ocr_request = OCRRequest(image_url=image_url)
         ocr_result = self.process_image(ocr_request)
         return ocr_result.text_blocks
@@ -288,6 +330,11 @@ class OCRService(BaseService):
         # TODO: Handle typos and variations
         # TODO: Create search-friendly format
         
+        """Check if OCR quality meets minimum threshold."""
+        return ocr_result.overall_confidence >= min_confidence
+
+    def preprocess_for_matching(self, parsed_label: ParsedWineLabel) -> dict:
+        """Prepare parsed label data for wine matching/identification."""
         return {
             "name": parsed_label.wine_name,
             "producer": parsed_label.producer,

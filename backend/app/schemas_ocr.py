@@ -12,6 +12,8 @@ class TextBlock(BaseModel):
     confidence: float
     x: Optional[int] = None  # Bounding box x coordinate
     y: Optional[int] = None  # Bounding box y coordinate
+    x: Optional[int] = None
+    y: Optional[int] = None
     width: Optional[int] = None
     height: Optional[int] = None
 
@@ -21,6 +23,7 @@ class OCRRequest(BaseModel):
     image_url: str
     language: str = "en"
     extract_structure: bool = True  # Extract label structure
+    extract_structure: bool = True
 
 
 class OCRResult(BaseModel):
@@ -45,6 +48,7 @@ class ParsedWineLabel(BaseModel):
     volume: Optional[str] = None
     tasting_notes: Optional[str] = None
     additional_text: str  # Any text that wasn't categorized
+    additional_text: str = ""
     confidence_score: float
 
 

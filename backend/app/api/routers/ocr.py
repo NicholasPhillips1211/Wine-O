@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from backend.app.schemas_jobs import JobStatusResponse, JobSubmissionResponse
 from backend.app.schemas_ocr import OCRAnalysisRequest, OCRAnalysisResult, OCRRequest, OCRResult, ParsedWineLabel, TextBlock
 from backend.app.services.job_service import JobService
+from backend.app.schemas_ocr import OCRAnalysisRequest, OCRAnalysisResult, OCRRequest, OCRResult, ParsedWineLabel, TextBlock
 from backend.app.services.ocr_service import OCRService
 
 
@@ -107,3 +108,4 @@ async def get_job_status(
 ) -> JobStatusResponse:
     """Return the latest known state for an OCR background job."""
     return job_service.get_job_status(job_id)
+    return ocr_service.preprocess_for_matching(parsed_label)
