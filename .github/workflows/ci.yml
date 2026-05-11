@@ -20,3 +20,5 @@ jobs:
       - name: Run backend tests
         run: |
           pytest backend/tests -q
+        env:
+          PYTHONPATH: ${{ github.workspace }}
