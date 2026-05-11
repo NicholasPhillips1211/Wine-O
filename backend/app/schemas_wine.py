@@ -58,23 +58,3 @@ class UserWineCollection(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class WineSearchResponse(BaseModel):
-    """Search result for a wine."""
-    id: int
-    name: str
-    region: str
-    vintage: int
-    score: Optional[float] = None
-
-
-class WineIdentificationRequest(BaseModel):
-    """Request to identify a wine from an image."""
-    image_base64: str
-
-
-class WineIdentificationResponse(BaseModel):
-    """Response from identifying a wine."""
-    identification_id: str
-    result: WineIdentificationResult

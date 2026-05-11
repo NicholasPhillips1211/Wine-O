@@ -77,18 +77,18 @@ class WineService(BaseService):
         return []
 
     def update_wine(self, wine_id: int, wine_data: WineUpdate) -> Optional[WineResponse]:
-        """Update wine information."""
-        return WineResponse(
-            id=wine_id,
-            name=wine_data.name or "Updated Wine",
-            region=wine_data.region or "Napa Valley",
-            vintage=wine_data.vintage or 2020,
-            varietals=wine_data.varietals,
-            alcohol_content=wine_data.alcohol_content,
-            description=wine_data.description,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
+        """Update wine information.
+        
+        Args:
+            wine_id: Wine to update
+            wine_data: Updated wine data
+            
+        Returns:
+            Updated WineResponse or None if not found
+        """
+        # TODO: Update in database
+        
+        return None
 
     def search_wines(self, query: str) -> list[WineResponse]:
         """Search wines by name, region, or varietals.
@@ -164,20 +164,3 @@ class WineService(BaseService):
         # TODO: Fetch from database
         
         return []
-    def get_user_collection_wines(self, user_id: int) -> list[WineResponse]:
-        """Get all wines in a user's collection."""
-        # TODO: Implement database lookup
-        return []
-
-    def identify_wine(self, identification_request) -> dict:
-        """Process wine identification request."""
-        # TODO: Implement identification logic
-        return {
-            "identification_id": "test_id",
-            "result": {
-                "confidence": 0.0,
-                "wine": None,
-                "candidates": [],
-                "extracted_text": ""
-            }
-        }
