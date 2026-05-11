@@ -11,3 +11,5 @@ redis
 celery[redis]
 pytest
 httpx
+Pillow
+pytesseract

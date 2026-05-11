@@ -58,3 +58,13 @@ class UserWineCollection(BaseModel):
 
     class Config:
         from_attributes = True
+
+class WineSearchResponse(BaseModel):
+    items: list[WineResponse]
+    total: int
+
+class WineIdentificationRequest(BaseModel):
+    image_b64: str
+
+class WineIdentificationResponse(WineIdentificationResult):
+    pass
