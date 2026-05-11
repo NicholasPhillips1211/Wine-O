@@ -5,6 +5,8 @@ on: [push, pull_request]
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -17,4 +19,4 @@ jobs:
           pip install -r backend/requirements.txt
       - name: Run backend tests
         run: |
-          pytest -q
+          pytest backend/tests -q
