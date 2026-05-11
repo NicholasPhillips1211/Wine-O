@@ -3,9 +3,21 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from backend.app.schemas_wine import WineCreate, WineIdentificationResult, WineResponse, WineUpdate
 from backend.app.services.wine_service import WineService
 
+from backend.app.schemas_wine import (
+    WineCreate, 
+    WineUpdate, 
+    WineResponse, 
+    WineSearchResponse, 
+    WineIdentificationRequest, 
+    WineIdentificationResponse
+)
+from backend.app.services.wine_service import WineService
 
 router = APIRouter(prefix="/wines", tags=["wines"])
 
+def get_wine_service() -> WineService:
+    """Dependency injection for wine service."""
+    return WineService()
 
 def get_wine_service() -> WineService:
     """Dependency injection for wine service."""
