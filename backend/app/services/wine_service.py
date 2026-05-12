@@ -1,6 +1,6 @@
 """Wine service with business logic for wine data and identification."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from backend.app.schemas_wine import WineCreate, WineIdentificationResult, WineResponse, WineUpdate
@@ -60,8 +60,8 @@ class WineService(BaseService):
             varietals=wine_data.varietals,
             alcohol_content=wine_data.alcohol_content,
             description=wine_data.description,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
 
     def get_wine(self, wine_id: int) -> Optional[WineResponse]:
@@ -88,8 +88,8 @@ class WineService(BaseService):
             varietals=["Cabernet Sauvignon"],
             alcohol_content=13.5,
             description="A fine wine",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
 
     def list_wines(self, skip: int = 0, limit: int = 100) -> list[WineResponse]:
@@ -212,7 +212,7 @@ class WineService(BaseService):
             "wine_id": wine_id,
             "tasting_notes": tasting_notes,
             "rating": rating,
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc)
         }
 
     def get_user_collection(self, user_id: int) -> list[dict]:

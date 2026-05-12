@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 import uuid
 
@@ -38,8 +38,8 @@ class JobService(BaseService):
             "successful": state == "SUCCESS",
             "result": result,
             "error_message": error_message,
-            "created_at": JOB_REGISTRY.get(job_id, {}).get("created_at", datetime.utcnow()),
-            "updated_at": datetime.utcnow(),
+            "created_at": JOB_REGISTRY.get(job_id, {}).get("created_at", datetime.now(timezone.utc)),
+            "updated_at": datetime.now(timezone.utc),
         }
 
     def _submit_task(self, task, job_name: str, *args, **kwargs) -> JobSubmissionResponse:

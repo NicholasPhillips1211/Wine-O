@@ -1,7 +1,7 @@
 """Email service for sending transactional emails."""
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from backend.app.schemas_email_oauth import (
@@ -47,14 +47,14 @@ class EmailService(BaseService):
 
     def send_email(self, request: EmailRequest) -> dict:
         """Send transactional email."""
-        email_id = f"email_{int(datetime.utcnow().timestamp() * 1000)}"
+        email_id = f"email_{int(datetime.now(timezone.utc).timestamp() * 1000)}"
 
         # Simulate email sending (real implementation would use smtplib or SendGrid)
         self.email_logs[email_id] = {
             "recipient": request.recipient_email,
             "subject": request.subject,
             "status": "sent",
-            "sent_at": datetime.utcnow().isoformat(),
+            "sent_at": datetime.now(timezone.utc).isoformat(),
         }
 
         return {
@@ -62,7 +62,7 @@ class EmailService(BaseService):
             "recipient": request.recipient_email,
             "subject": request.subject,
             "status": "sent",
-            "sent_at": datetime.utcnow().isoformat(),
+            "sent_at": datetime.now(timezone.utc).isoformat(),
         }
 
     def send_verification_email(self, request: EmailVerificationRequest) -> EmailVerificationResult:
@@ -83,7 +83,7 @@ class EmailService(BaseService):
 
         return EmailVerificationResult(
             email=request.email,
-            sent_at=datetime.utcnow(),
+            sent_at=datetime.now(timezone.utc),
             delivery_status="sent",
             message_id=email_result["email_id"],
         )
@@ -107,7 +107,7 @@ class EmailService(BaseService):
 
         return PasswordResetResult(
             email=request.email,
-            sent_at=datetime.utcnow(),
+            sent_at=datetime.now(timezone.utc),
             delivery_status="sent",
             message_id=email_result["email_id"],
         )

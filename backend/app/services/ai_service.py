@@ -1,7 +1,7 @@
 """AI Orchestration service coordinating OCR, wines, and 3D reconstruction."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from backend.app.schemas_ai import (
@@ -158,8 +158,8 @@ class AIOrchestrationService(BaseService):
             overall_status="completed",
             stages=stages,
             overall_progress_percent=100,
-            started_at=datetime.utcnow(),
-            estimated_completion_time=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
+            estimated_completion_time=datetime.now(timezone.utc),
             error_summary=None,
         )
 

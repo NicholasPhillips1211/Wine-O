@@ -152,7 +152,7 @@ class GLTFExporter:
         
         # Compute normals (simplified - flat normals per face)
         normals = GLTFExporter._compute_normals(mesh)
-        normal_array = np.array(normals, dtype=np.float32).flatten()
+        normal_array = np.array([[normal.x, normal.y, normal.z] for normal in normals], dtype=np.float32).flatten()
         
         # Create buffers
         buffers = [
