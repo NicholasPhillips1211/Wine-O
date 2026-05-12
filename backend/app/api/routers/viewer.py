@@ -4,12 +4,14 @@ Serves interactive WebGL viewer for inspecting and comparing 3D models with
 proper lighting, PBR materials, and camera pose visualization.
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse
 import json
-from typing import Optional
 
-router = APIRouter(prefix="/api/v1", tags=["3d-viewer"])
+from backend.app.api.routers.reconstruction import get_reconstruction_service
+from backend.app.services.reconstruction_service import ReconstructionService
+
+router = APIRouter(tags=["3d-viewer"])
 
 
 @router.get("/viewer")
@@ -481,9 +483,31 @@ async def get_viewer_html() -> HTMLResponse:
 
 
 @router.get("/reconstruction/{reconstruction_id}/viewer")
-async def get_reconstruction_viewer(reconstruction_id: str) -> HTMLResponse:
+async def get_reconstruction_viewer(
+    reconstruction_id: str,
+    reconstruction_service: ReconstructionService = Depends(get_reconstruction_service),
+) -> HTMLResponse:
     """Get viewer for specific reconstruction with pre-loaded data."""
-    
+
+    reconstruction = reconstruction_service.get_reconstruction(reconstruction_id)
+    if reconstruction is None:
+        return HTMLResponse(
+            content=f"""
+            <!DOCTYPE html>
+            <html>
+            <head><title>Reconstruction Not Found</title></head>
+            <body style=\"font-family:sans-serif;padding:24px;\">
+                <h2>Reconstruction not found</h2>
+                <p>No reconstruction exists for ID: {reconstruction_id}</p>
+            </body>
+            </html>
+            """,
+            status_code=404,
+        )
+
+    gltf_json = reconstruction.metadata.get("gltf_json", {})
+    gltf_json_js = json.dumps(gltf_json)
+
     html = f"""
     <!DOCTYPE html>
     <html>
@@ -508,6 +532,7 @@ async def get_reconstruction_viewer(reconstruction_id: str) -> HTMLResponse:
         <script>
             // Scene setup
             const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x111111);
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             const renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -522,13 +547,53 @@ async def get_reconstruction_viewer(reconstruction_id: str) -> HTMLResponse:
             directionalLight.position.set(5, 5, 5);
             directionalLight.castShadow = true;
             scene.add(directionalLight);
+
+            const statusEl = document.getElementById('status');
+
+            async function loadModel() {{
+                try {{
+                    statusEl.textContent = 'Loading glTF...';
+                    const response = await fetch('/api/v1/3d/export/{reconstruction_id}?format=gltf');
+                    const payload = await response.json();
+
+                    if (!response.ok || payload.error) {{
+                        statusEl.textContent = payload.error || 'Failed to fetch reconstruction';
+                        return;
+                    }}
+
+                    const exportResponse = await fetch('/api/v1/3d/status/{reconstruction_id}');
+                    if (exportResponse.ok) {{
+                        statusEl.textContent = 'Rendering';
+                    }}
+
+                    const gltfJson = {gltf_json_js};
+                    const loader = new THREE.GLTFLoader();
+                    loader.parse(
+                        JSON.stringify(gltfJson),
+                        '',
+                        (gltf) => {{
+                            scene.add(gltf.scene);
+                            camera.position.set(0, 0.8, 2.2);
+                            statusEl.textContent = 'Loaded';
+                        }},
+                        (error) => {{
+                            console.error(error);
+                            statusEl.textContent = 'glTF parse failed';
+                        }}
+                    );
+                }} catch (error) {{
+                    console.error(error);
+                    statusEl.textContent = 'Load error';
+                }}
+            }}
             
             // Animation loop
             function animate() {{
                 requestAnimationFrame(animate);
                 renderer.render(scene, camera);
             }}
-            
+
+            loadModel();
             animate();
         </script>
     </body>

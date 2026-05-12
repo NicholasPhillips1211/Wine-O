@@ -44,7 +44,6 @@ from backend.app.services.lighting_estimator import LightingEstimator, ThreeJSLi
 from backend.app.services.sfm_integration import (
     COLMAPInterface,
     FastSfMFallback,
-    MeshOptimizer,
 )
 
 
@@ -347,6 +346,10 @@ class ReconstructionService(BaseService):
             volume=volume,
         )
 
+    def get_reconstruction(self, reconstruction_id: str) -> Optional[ReconstructionResult]:
+        """Fetch a stored reconstruction by ID."""
+        return self.reconstructions.get(reconstruction_id)
+
     async def reconstruct_from_images_enhanced(
         self,
         image_urls: List[str],
@@ -455,13 +458,13 @@ class ReconstructionService(BaseService):
                 try:
                     # Detect label quadrilateral corners
                     label_corners = self.perspective_corrector.detect_label_quadrilateral(
-                        primary_image, label_result
+                        primary_image, label_result.label_mask
                     )
                     
                     if label_corners is not None and len(label_corners) == 4:
                         # Warp label to frontal view
                         corrected_label = self.perspective_corrector.warp_label_perspective(
-                            label_texture, label_corners
+                            primary_image, label_corners
                         )
                         
                         # Estimate camera pose
@@ -474,31 +477,26 @@ class ReconstructionService(BaseService):
                             height=h,
                         )
                         
-                        # Get 3D bottle label zone center
-                        bottle_label_points_3d = np.array([v for v in label_zone_vertices])
-                        if len(bottle_label_points_3d) > 0:
-                            camera_pose = self.perspective_corrector.estimate_camera_pose_from_label(
-                                label_corners,
-                                bottle_label_points_3d,
-                                camera_intrinsics,
+                        camera_pose = self.perspective_corrector.estimate_camera_pose_from_label(
+                            label_corners,
+                            camera_intrinsics,
+                        )
+
+                        if camera_pose is not None:
+                            perspective_data = {
+                                "camera_position": list(camera_pose.position),
+                                "camera_rotation": camera_pose.rotation.tolist(),
+                                "camera_quaternion": list(camera_pose.quaternion),
+                            }
+
+                            # Enhance texture with corrected perspective
+                            enhancer = LabelTextureEnhancer()
+                            enhanced_label = enhancer.enhance_with_specular_highlights(
+                                corrected_label
                             )
-                            
-                            if camera_pose is not None:
-                                perspective_data = {
-                                    "corrected_label": corrected_label,
-                                    "camera_position": list(camera_pose.position),
-                                    "camera_rotation": camera_pose.rotation.tolist(),
-                                    "camera_quaternion": list(camera_pose.quaternion),
-                                }
-                                
-                                # Enhance texture with corrected perspective
-                                enhancer = LabelTextureEnhancer()
-                                enhanced_label = enhancer.enhance_with_specular_highlights(
-                                    corrected_label
-                                )
-                                label_texture = enhanced_label
-                                
-                                result_dict["processing_stages"]["perspective_correction"] = "success"
+                            label_texture = enhanced_label
+
+                            result_dict["processing_stages"]["perspective_correction"] = "success"
                 except Exception as e:
                     result_dict["processing_stages"]["perspective_correction"] = f"failed: {str(e)}"
             
@@ -626,6 +624,29 @@ class ReconstructionService(BaseService):
                 "lighting": lighting_data,
                 "sfm_data": sfm_data,
             })
+
+            stored_result = ReconstructionResult(
+                reconstruction_id=reconstruction_id,
+                mesh=mesh,
+                texture_url=texture_base64,
+                confidence_score=float(label_result.confidence),
+                processing_time_ms=(time.time() - start_time) * 1000,
+                output_format="gltf",
+                metadata={
+                    "object_type": bottle_type,
+                    "num_input_images": len(image_urls),
+                    "quality_setting": "high",
+                    "label_detected": True,
+                    "label_confidence": float(label_result.confidence),
+                    "gltf_json": gltf_json,
+                    "viewer_config": viewer_config,
+                    "perspective_data": perspective_data,
+                    "pbr_materials": pbr_data,
+                    "lighting": lighting_data,
+                    "sfm_data": sfm_data,
+                },
+            )
+            self.reconstructions[reconstruction_id] = stored_result
             
             return result_dict
             
