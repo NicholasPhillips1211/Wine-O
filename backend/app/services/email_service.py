@@ -34,7 +34,8 @@ class EmailService(BaseService):
         """Initialize email service with provider configuration.
         
         Reads SMTP configuration from environment variables and initializes
-        connection parameters for email delivery.\n        \"\"\"
+        connection parameters for email delivery.
+        """
         # SMTP server configuration from environment or defaults
         self.smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
         self.smtp_port = int(os.getenv("SMTP_PORT", "587"))

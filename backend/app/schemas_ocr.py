@@ -1,9 +1,8 @@
 """Pydantic models for OCR domain."""
 
-from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TextBlock(BaseModel):
@@ -12,8 +11,6 @@ class TextBlock(BaseModel):
     confidence: float
     x: Optional[int] = None  # Bounding box x coordinate
     y: Optional[int] = None  # Bounding box y coordinate
-    x: Optional[int] = None
-    y: Optional[int] = None
     width: Optional[int] = None
     height: Optional[int] = None
 
@@ -23,7 +20,6 @@ class OCRRequest(BaseModel):
     image_url: str
     language: str = "en"
     extract_structure: bool = True  # Extract label structure
-    extract_structure: bool = True
 
 
 class OCRResult(BaseModel):
@@ -43,12 +39,11 @@ class ParsedWineLabel(BaseModel):
     region: Optional[str] = None
     country: Optional[str] = None
     vintage: Optional[int] = None
-    varietals: list[str] = []
+    varietals: list[str] = Field(default_factory=list)
     alcohol_content: Optional[float] = None
     volume: Optional[str] = None
     tasting_notes: Optional[str] = None
-    additional_text: str  # Any text that wasn't categorized
-    additional_text: str = ""
+    additional_text: str = ""  # Any text that wasn't categorized
     confidence_score: float
 
 

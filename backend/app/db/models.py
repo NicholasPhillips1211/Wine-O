@@ -4,15 +4,16 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Text, JSON, Table
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import registry, relationship
 
-Base = declarative_base()
+# Create registry and generate base class (replaces deprecated declarative_base())
+registry_obj = registry()
+Base = registry_obj.generate_base()
 
 # Association table for Wine and WineCollection (many-to-many)
 wine_collection_association = Table(
     "wine_collection_association",
-    Base.metadata,
+    registry_obj.metadata,
     Column("wine_id", Integer, ForeignKey("wines.id"), primary_key=True),
     Column("collection_id", Integer, ForeignKey("wine_collections.id"), primary_key=True),
 )

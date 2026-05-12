@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 class WineAnalysisRequest(BaseModel):
     """Request to analyze wine label and reconstruct bottle."""
-    image_urls: list[str] = Field(..., min_items=1, description="Images of wine bottle")
+    image_urls: list[str] = Field(..., min_length=1, description="Images of wine bottle")
     analysis_depth: str = Field("standard", pattern="^(quick|standard|deep)$")
     enable_reconstruction: bool = Field(True, description="Build 3D model")
     enable_identification: bool = Field(True, description="Identify wine in database")
@@ -70,7 +70,7 @@ class EnhancedWineAnalysis(BaseModel):
 
 class BatchAnalysisRequest(BaseModel):
     """Request to analyze multiple wine images."""
-    analysis_requests: list[WineAnalysisRequest] = Field(..., min_items=1)
+    analysis_requests: list[WineAnalysisRequest] = Field(..., min_length=1)
     parallel_processing: bool = Field(True, description="Process in parallel")
     deduplicate_results: bool = Field(True, description="Remove duplicates")
 
