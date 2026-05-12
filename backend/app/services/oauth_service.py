@@ -17,7 +17,20 @@ from backend.app.services import BaseService
 
 
 class OAuthService(BaseService):
-    """Service layer for OAuth operations."""
+    """Service layer for OAuth operations.
+    
+    Handles OAuth 2.0 authentication flows with multiple social providers:
+    Google, GitHub, Apple, and Microsoft. Manages authorization, token exchange,
+    user profile retrieval, and state validation for security.
+    
+    Key capabilities:
+    - OAuth authorization URL generation
+    - Callback handling and state validation
+    - Authorization code to token exchange
+    - User profile retrieval from provider
+    - Support for multiple OAuth providers
+    - PKCE support for mobile/SPA applications
+    """
 
     def __init__(self):
         """Initialize OAuth service with provider configurations."""

@@ -15,15 +15,33 @@ from backend.app.services import BaseService
 
 
 class EmailService(BaseService):
-    """Service layer for email operations."""
+    """Service layer for email operations.
+    
+    Handles transactional email delivery for user authentication and notifications.
+    Supports email verification, password reset, welcome emails, and general notifications.
+    Uses SMTP for email delivery (configurable to use SendGrid, AWS SES, etc.).
+    
+    Key capabilities:
+    - Email verification links for account registration
+    - Password reset workflows
+    - Welcome emails for new users
+    - Notification emails for system events
+    - Email delivery tracking and logging
+    - Retry mechanism for failed emails
+    """
 
     def __init__(self):
-        """Initialize email service with provider configuration."""
+        """Initialize email service with provider configuration.
+        
+        Reads SMTP configuration from environment variables and initializes
+        connection parameters for email delivery.\n        \"\"\"
+        # SMTP server configuration from environment or defaults
         self.smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
         self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
         self.smtp_user = os.getenv("SMTP_USER", "noreply@wine-o.com")
         self.smtp_password = os.getenv("SMTP_PASSWORD", "")
         self.from_email = os.getenv("FROM_EMAIL", "noreply@wine-o.com")
+        # Log of sent emails for tracking and debugging
         self.email_logs = {}
 
     def send_email(self, request: EmailRequest) -> dict:
@@ -113,7 +131,20 @@ class EmailService(BaseService):
     def send_notification_email(
         self, email: str, subject: str, message: str, html_message: Optional[str] = None
     ) -> dict:
-        """Send notification email."""
+        """Send notification email.
+        
+        Sends a general-purpose notification email (system alerts, activity updates,
+        recommendations, etc.). Supports both plain text and HTML formatting.
+        
+        Args:
+            email: Recipient email address
+            subject: Email subject line
+            message: Plain text message body
+            html_message: Optional HTML formatted message
+            
+        Returns:
+            Dictionary with email delivery status
+        """
         notification_request = EmailRequest(
             recipient_email=email,
             subject=subject,
