@@ -1,6 +1,6 @@
 """Authentication service with business logic for user registration, login, and verification."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from backend.app.schemas import EmailVerificationRequest, LoginRequest, UserCreate, UserResponse
@@ -70,7 +70,7 @@ class AuthService(BaseService):
             "first_name": user_data.first_name,
             "last_name": user_data.last_name,
             "is_active": False,
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc)
         }
 
     def login(self, credentials: LoginRequest) -> Optional[dict]:
@@ -148,5 +148,5 @@ class AuthService(BaseService):
             "first_name": "John",
             "last_name": "Doe",
             "is_active": True,
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc)
         }

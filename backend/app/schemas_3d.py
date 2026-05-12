@@ -22,7 +22,7 @@ class Mesh(BaseModel):
 
 class ReconstructionRequest(BaseModel):
     """Request to reconstruct 3D model from images."""
-    image_urls: list[str] = Field(..., min_items=2, description="Multiple angles of object")
+    image_urls: list[str] = Field(..., min_length=2, description="Multiple angles of object")
     object_type: str = Field("wine_bottle", description="Type of object to reconstruct")
     quality: str = Field("medium", pattern="^(low|medium|high)$", description="Reconstruction quality")
     enable_texture: bool = Field(True, description="Include texture mapping")

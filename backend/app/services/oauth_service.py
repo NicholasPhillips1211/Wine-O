@@ -2,7 +2,7 @@
 
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from urllib.parse import urlencode
 
@@ -82,8 +82,8 @@ class OAuthService(BaseService):
         # Store state for validation in callback
         self.oauth_states[state] = {
             "provider": provider,
-            "created_at": datetime.utcnow(),
-            "expires_at": datetime.utcnow() + timedelta(minutes=10),
+            "created_at": datetime.now(timezone.utc),
+            "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10),
         }
 
         params = {
@@ -117,7 +117,7 @@ class OAuthService(BaseService):
             raise ValueError("Invalid OAuth state")
 
         state_data = self.oauth_states[request.state]
-        if state_data["expires_at"] < datetime.utcnow():
+        if state_data["expires_at"] < datetime.now(timezone.utc):
             raise ValueError("OAuth state expired")
 
         provider = request.provider
@@ -181,7 +181,7 @@ class OAuthService(BaseService):
             return False
 
         state_data = self.oauth_states[state]
-        if state_data["expires_at"] < datetime.utcnow():
+        if state_data["expires_at"] < datetime.now(timezone.utc):
             del self.oauth_states[state]
             return False
 

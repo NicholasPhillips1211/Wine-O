@@ -15,11 +15,12 @@ from backend.app.services.reconstruction_service import ReconstructionService
 
 
 router = APIRouter(prefix="/3d", tags=["3d"])
+_reconstruction_service = ReconstructionService()
 
 
 def get_reconstruction_service() -> ReconstructionService:
     """Dependency: get reconstruction service instance."""
-    return ReconstructionService()
+    return _reconstruction_service
 
 
 @router.post("/reconstruct", response_model=ReconstructionResult)
@@ -29,6 +30,22 @@ async def reconstruct_from_images(
 ) -> ReconstructionResult:
     """Reconstruct 3D model from multiple images."""
     return reconstruction_service.reconstruct_from_images(request)
+
+
+@router.post("/reconstruct-enhanced")
+async def reconstruct_from_images_enhanced(
+    request: ReconstructionRequest,
+    enable_photogrammetry: bool = False,
+    reconstruction_service: ReconstructionService = Depends(get_reconstruction_service),
+) -> dict:
+    """Reconstruct with perspective correction, camera pose, PBR maps, and lighting."""
+    return await reconstruction_service.reconstruct_from_images_enhanced(
+        image_urls=request.image_urls,
+        bottle_type=request.object_type,
+        enable_perspective_correction=True,
+        enable_pbr_materials=True,
+        enable_photogrammetry=enable_photogrammetry,
+    )
 
 
 @router.get("/status/{reconstruction_id}", response_model=ReconstructionStatus)
