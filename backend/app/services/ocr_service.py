@@ -9,9 +9,10 @@ from io import BytesIO
 import httpx
 
 try:
-    from PIL import Image, ImageOps
+    from PIL import Image, ImageEnhance, ImageOps
 except ImportError:  # pragma: no cover - Pillow is expected in deployment, but we fail gracefully.
     Image = None
+    ImageEnhance = None
     ImageOps = None
 
 try:
@@ -98,6 +99,30 @@ class OCRService(BaseService):
         # Apply EXIF rotation correction and convert to RGB for OCR compatibility
         return ImageOps.exif_transpose(image).convert("RGB") if ImageOps else image.convert("RGB")
 
+    def _preprocess_image_for_ocr(self, image):
+        """Build OCR-friendly image variants from the original image.
+
+        Real-world wine labels often contain glare, curved surfaces, and low-contrast text.
+        Generating a few simple variants gives Tesseract more than one chance to read the
+        text correctly without changing the public API or introducing heavier dependencies.
+        """
+        if Image is None:
+            return [image]
+
+        variants = [image]
+
+        # Grayscale and autocontrast usually improve text separation on labels.
+        grayscale = ImageOps.grayscale(image) if ImageOps else image.convert("L")
+        normalized = ImageOps.autocontrast(grayscale) if ImageOps else grayscale
+        variants.append(normalized)
+
+        # A slightly sharpened version can recover text edges on soft or blurry photos.
+        if ImageEnhance is not None:
+            sharpened = ImageEnhance.Sharpness(normalized).enhance(1.8)
+            variants.append(sharpened)
+
+        return variants
+
     def _synthetic_blocks(self) -> list[TextBlock]:
         """Return deterministic sample text blocks for environments without OCR.
         
@@ -161,43 +186,59 @@ class OCRService(BaseService):
         if pytesseract is None:
             return []
 
-        # Run Tesseract OCR and request word-level data with confidence scores
-        data = pytesseract.image_to_data(image, lang=language, output_type=pytesseract.Output.DICT)
-        blocks: list[TextBlock] = []
+        def score_blocks(candidate_blocks: list[TextBlock]) -> float:
+            if not candidate_blocks:
+                return 0.0
 
-        # Process each detected word/text element
-        for index, text in enumerate(data.get("text", [])):
-            # Skip empty or whitespace-only text
-            cleaned_text = text.strip()
-            if not cleaned_text:
-                continue
+            average_confidence = sum(block.confidence for block in candidate_blocks) / len(candidate_blocks)
+            return average_confidence + (0.05 * len(candidate_blocks))
 
-            # Extract and validate the confidence score for this text element
-            confidence_raw = data.get("conf", ["-1"])[index]
-            try:
-                confidence_value = float(confidence_raw)
-            except (TypeError, ValueError):
-                confidence_value = -1.0
+        best_blocks: list[TextBlock] = []
+        best_score = -1.0
 
-            # Skip low-confidence or invalid results (conf < 0 indicates failed detection)
-            if confidence_value < 0:
-                continue
+        for candidate_image in self._preprocess_image_for_ocr(image):
+            # Run Tesseract OCR and request word-level data with confidence scores
+            data = pytesseract.image_to_data(candidate_image, lang=language, output_type=pytesseract.Output.DICT)
+            candidate_blocks: list[TextBlock] = []
 
-            # Tesseract reports confidence on a 0-100 scale; normalize to 0-1 for consistency
-            normalized_confidence = max(0.0, min(1.0, confidence_value / 100.0))
-            # Create a TextBlock with position, size, and normalized confidence
-            blocks.append(
-                TextBlock(
-                    text=cleaned_text,
-                    confidence=normalized_confidence,
-                    x=int(data.get("left", [0])[index]),
-                    y=int(data.get("top", [0])[index]),
-                    width=int(data.get("width", [0])[index]),
-                    height=int(data.get("height", [0])[index]),
+            # Process each detected word/text element
+            for index, text in enumerate(data.get("text", [])):
+                # Skip empty or whitespace-only text
+                cleaned_text = text.strip()
+                if not cleaned_text:
+                    continue
+
+                # Extract and validate the confidence score for this text element
+                confidence_raw = data.get("conf", ["-1"])[index]
+                try:
+                    confidence_value = float(confidence_raw)
+                except (TypeError, ValueError):
+                    confidence_value = -1.0
+
+                # Skip low-confidence or invalid results (conf < 0 indicates failed detection)
+                if confidence_value < 0:
+                    continue
+
+                # Tesseract reports confidence on a 0-100 scale; normalize to 0-1 for consistency
+                normalized_confidence = max(0.0, min(1.0, confidence_value / 100.0))
+                # Create a TextBlock with position, size, and normalized confidence
+                candidate_blocks.append(
+                    TextBlock(
+                        text=cleaned_text,
+                        confidence=normalized_confidence,
+                        x=int(data.get("left", [0])[index]),
+                        y=int(data.get("top", [0])[index]),
+                        width=int(data.get("width", [0])[index]),
+                        height=int(data.get("height", [0])[index]),
+                    )
                 )
-            )
 
-        return blocks
+            candidate_score = score_blocks(candidate_blocks)
+            if candidate_score > best_score:
+                best_score = candidate_score
+                best_blocks = candidate_blocks
+
+        return best_blocks
 
     def _extract_best_guess_label(self, raw_text: str) -> ParsedWineLabel:
         """Extract a best-effort wine label structure from OCR text.
@@ -248,6 +289,21 @@ class OCRService(BaseService):
                 country = resolved_country
                 break
 
+        producer = None
+        for candidate in ["chateau", "domaine", "estate", "vineyard", "cellars", "winery", "bodega"]:
+            if candidate in normalized_text:
+                producer = candidate.title()
+                break
+
+        volume = None
+        volume_match = re.search(r"\b(\d{2,4})\s*(ml|l)\b", normalized_text)
+        if volume_match:
+            amount = volume_match.group(1)
+            unit = volume_match.group(2)
+            volume = f"{amount}{unit}"
+        elif "750" in normalized_text:
+            volume = "750ml"
+
         # This heuristic keeps the parser useful even when the OCR output is noisy.
         # Identify wine varietals by common grape variety names
         wine_name = None
@@ -263,16 +319,16 @@ class OCRService(BaseService):
 
         return ParsedWineLabel(
             wine_name=wine_name,
-            producer=None,
+            producer=producer,
             region=region,
             country=country,
             vintage=int(vintage_match.group(0)) if vintage_match else None,
             varietals=[wine_name] if wine_name else [],
             alcohol_content=float(alcohol_match.group(1)) if alcohol_match else None,
-            volume="750ml" if "750" in normalized_text else None,
+            volume=volume,
             tasting_notes=None,
             additional_text=raw_text.strip(),
-            confidence_score=confidence,
+            confidence_score=min(0.95, confidence + (0.05 if producer else 0.0) + (0.05 if volume else 0.0)),
         )
 
     def process_image(self, ocr_request: OCRRequest) -> OCRResult:

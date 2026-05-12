@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class WineBase(BaseModel):
@@ -33,15 +33,14 @@ class WineResponse(WineBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WineIdentificationResult(BaseModel):
     """Result from OCR/AI wine identification."""
     confidence: float
     wine: Optional[WineResponse] = None
-    candidates: list[WineResponse] = []
+    candidates: list[WineResponse] = Field(default_factory=list)
     extracted_text: Optional[str] = None
 
 
@@ -56,8 +55,8 @@ class UserWineCollection(BaseModel):
     purchase_date: Optional[datetime] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class WineSearchResponse(BaseModel):
     items: list[WineResponse]

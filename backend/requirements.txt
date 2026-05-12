@@ -13,3 +13,7 @@ pytest
 httpx
 Pillow
 pytesseract
+opencv-python
+numpy
+pygltflib
+scipy
