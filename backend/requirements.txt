@@ -7,9 +7,15 @@ psycopg2-binary
 python-jose[cryptography]
 passlib[bcrypt]
 pydantic[email]
+pydantic-settings
 redis
 celery[redis]
 pytest
 httpx
 Pillow
 pytesseract
+opencv-python
+numpy
+scipy
+pygltflib
+python-dotenv

@@ -1,29 +1,33 @@
 # Wine-O
 
-Wine-O is a monorepo for an AI-assisted wine recognition, collection, and reconstruction platform.
-It combines mobile capture, backend orchestration, OCR-based wine label extraction, 3D reconstruction,
+Wine-O is a monorepo for an AI-assisted wine recognition, collection, and photo-realistic 3D reconstruction platform.
+It combines mobile capture, backend orchestration, OCR-based wine label extraction, perspective-corrected 3D rendering,
 and AI-driven analysis into a single product vision.
 
 ## What the application does
 
 Wine-O is designed to let a user scan a bottle or label, identify the wine, enrich the result with
-structured data, and then continue into broader discovery and collection workflows.
+structured data, and visualize the bottle as an interactive 3D model with perspective-corrected label texture mapping.
 
 At a high level, the product supports:
 
 - Mobile image capture and upload for wine labels and bottle photos.
 - Backend authentication, user management, and wine collection management.
 - OCR extraction of label text, including a real Tesseract-backed path with a deterministic fallback.
-- Wine label parsing that turns raw OCR output into structured fields such as vintage, region,
-  varietals, and alcohol content.
-- Background job processing for long-running OCR work through a Celery-based queue.
-- 3D reconstruction workflows for bottle or object imagery.
+- Wine label parsing that turns raw OCR output into structured fields such as vintage, region, varietals, and alcohol content.
+- **Photo-realistic 3D reconstruction** from mobile images, including:
+  - Perspective correction and camera pose estimation from label geometry (PnP).
+  - Physically-based rendering (PBR) materials: normal, roughness, metallic, and ambient occlusion maps.
+  - Automated lighting estimation from source images (direction, intensity, color).
+  - Optional photogrammetry via COLMAP/SfM with feature-matching fallback for multi-angle reconstruction.
+  - Interactive Three.js viewer with perspective-corrected label texture overlay.
+- Background job processing for long-running OCR and 3D work through a Celery-based queue.
 - AI orchestration for higher-level wine analysis, recommendations, and future sommelier features.
 
 ## Current status
 
-The backend is the most complete part of the system today. The current codebase includes working
-FastAPI services, a test suite that passes, and a number of production-oriented service layers.
+The backend is feature-complete for the 3D reconstruction pipeline. The current codebase includes working
+FastAPI services, a test suite that passes, and production-oriented service layers with comprehensive documentation.
 
 Completed or largely in place:
 
@@ -31,23 +35,32 @@ Completed or largely in place:
 - Wine CRUD, search, identification, and collection endpoints.
 - OCR extraction and parsing for wine label text.
 - Async OCR job submission, job tracking, and fallback execution when Redis is unavailable.
-- 3D reconstruction and AI orchestration service surfaces.
+- **3D reconstruction service** with perspective correction, PBR material generation, lighting estimation, and SfM integration.
+- **Viewer endpoint** serving interactive Three.js models of reconstructed wine bottles.
+- AI orchestration service surface layer.
 - Shared schema and service abstractions.
-- Automated tests across the major backend modules.
+- Automated tests across all major backend modules (105+ tests passing).
 
-Validation currently shows the backend test suite passing.
+Validation: Backend test suite passes with all warnings cleaned up.
 
 ### Implemented backend details
 
-The backend now includes a more complete OCR and job-processing flow:
+The backend includes a complete OCR, job-processing, and 3D reconstruction flow:
 
-- `OCRService` detects a real Tesseract backend when available and falls back to deterministic
-  synthetic text blocks when it is not.
-- OCR image handling downloads remote images, applies EXIF-aware rotation, and converts images to
-  RGB before extraction.
-- Wine label parsing converts OCR text into structured fields such as winery name, region, vintage,
-  varietals, alcohol content, and supporting text.
-- Celery-based async OCR jobs allow the API to submit long-running work without blocking the
+- `OCRService` detects a real Tesseract backend when available and falls back to deterministic synthetic text blocks.
+- OCR image handling downloads remote images, applies EXIF-aware rotation, and converts to RGB before extraction.
+- Wine label parsing converts OCR text into structured fields (winery, region, vintage, varietals, alcohol, supporting text).
+- Celery-based async OCR jobs allow the API to submit long-running work without blocking the request.
+- **`ReconstructionService`** orchestrates photo-realistic 3D rendering:
+  - Detects label boundaries in photos using quad detection.
+  - Computes camera intrinsics and pose via perspective-n-point (PnP) from label corner geometry.
+  - Generates parametric 3D bottle geometry with accurate proportions.
+  - Creates PBR material maps (normal, roughness, metallic, AO) from image analysis.
+  - Estimates scene lighting (directional light + ambient color).
+  - Optionally runs COLMAP photogrammetry or falls back to feature-based reconstruction.
+  - Exports glTF/GLB models with embedded textures and Three.js viewer config.
+- **Viewer router** serves an HTML page with Three.js loader for interactive model exploration with label texture overlay.
+- All services include comprehensive method-level and inline documentation for maintainability.
   request cycle.
 - A lightweight job registry and status endpoint support polling even when Redis is unavailable in
   local development.

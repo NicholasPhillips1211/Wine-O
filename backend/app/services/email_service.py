@@ -1,7 +1,7 @@
 """Email service for sending transactional emails."""
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from backend.app.schemas_email_oauth import (
@@ -34,7 +34,8 @@ class EmailService(BaseService):
         """Initialize email service with provider configuration.
         
         Reads SMTP configuration from environment variables and initializes
-        connection parameters for email delivery.\n        \"\"\"
+        connection parameters for email delivery.
+        """
         # SMTP server configuration from environment or defaults
         self.smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
         self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
@@ -46,14 +47,14 @@ class EmailService(BaseService):
 
     def send_email(self, request: EmailRequest) -> dict:
         """Send transactional email."""
-        email_id = f"email_{int(datetime.utcnow().timestamp() * 1000)}"
+        email_id = f"email_{int(datetime.now(timezone.utc).timestamp() * 1000)}"
 
         # Simulate email sending (real implementation would use smtplib or SendGrid)
         self.email_logs[email_id] = {
             "recipient": request.recipient_email,
             "subject": request.subject,
             "status": "sent",
-            "sent_at": datetime.utcnow().isoformat(),
+            "sent_at": datetime.now(timezone.utc).isoformat(),
         }
 
         return {
@@ -61,7 +62,7 @@ class EmailService(BaseService):
             "recipient": request.recipient_email,
             "subject": request.subject,
             "status": "sent",
-            "sent_at": datetime.utcnow().isoformat(),
+            "sent_at": datetime.now(timezone.utc).isoformat(),
         }
 
     def send_verification_email(self, request: EmailVerificationRequest) -> EmailVerificationResult:
@@ -72,7 +73,7 @@ class EmailService(BaseService):
             html_body=f"""
             <h1>Welcome to Wine-O</h1>
             <p>Please verify your email address by clicking the link below:</p>
-            <a href="{request.verification_link}">Verify Email</a>
+            <a href='{request.verification_link}'>Verify Email</a>
             <p>This link expires in 24 hours.</p>
             """,
             body=f"Click here to verify: {request.verification_link}",
@@ -82,7 +83,7 @@ class EmailService(BaseService):
 
         return EmailVerificationResult(
             email=request.email,
-            sent_at=datetime.utcnow(),
+            sent_at=datetime.now(timezone.utc),
             delivery_status="sent",
             message_id=email_result["email_id"],
         )
@@ -95,7 +96,7 @@ class EmailService(BaseService):
             html_body=f"""
             <h1>Password Reset Request</h1>
             <p>Click the link below to reset your password:</p>
-            <a href="{request.reset_link}">Reset Password</a>
+            <a href='{request.reset_link}'>Reset Password</a>
             <p>This link expires in 1 hour.</p>
             <p>If you didn't request this, please ignore this email.</p>
             """,
@@ -106,7 +107,7 @@ class EmailService(BaseService):
 
         return PasswordResetResult(
             email=request.email,
-            sent_at=datetime.utcnow(),
+            sent_at=datetime.now(timezone.utc),
             delivery_status="sent",
             message_id=email_result["email_id"],
         )
