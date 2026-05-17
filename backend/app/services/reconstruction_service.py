@@ -8,7 +8,10 @@ from datetime import datetime, timezone
 from typing import Optional, List
 from pathlib import Path
 
-import cv2
+try:
+    import cv2
+except Exception:  # pragma: no cover - optional dependency fallback
+    cv2 = None
 import numpy as np
 import httpx
 
@@ -24,23 +27,21 @@ from backend.app.schemas_3d import (
     ReconstructionStatus,
 )
 from backend.app.services import BaseService
-from backend.app.services.bottle_geometry import (
+from backend.app.reconstruction.geometry.bottle_geometry import (
     WineBottleGeometry,
     BottleProfile,
 )
 from backend.app.services.label_detector import LabelDetector
-from backend.app.services.texture_and_export import (
-    BottleTextureMapper,
-    GLTFExporter,
-)
+from backend.app.reconstruction.materials.texture_generator import BottleTextureMapper
+from backend.app.reconstruction.export.gltf_exporter import GLTFExporter
 from backend.app.services.perspective_correction import (
     PerspectiveCorrector,
     LabelTextureEnhancer,
     CameraIntrinsics,
 )
 from backend.app.services.pbr_material_generator import generate_pbr_material
-from backend.app.services.lighting_estimator import LightingEstimator, ThreeJSLightingConfig
-from backend.app.services.sfm_integration import (
+from backend.app.reconstruction.materials.lighting_estimator import LightingEstimator, ThreeJSLightingConfig
+from backend.app.reconstruction.geometry.sfm_service import (
     COLMAPInterface,
     FastSfMFallback,
 )
@@ -92,6 +93,8 @@ class ReconstructionService(BaseService):
 
     def _download_image(self, image_url: str) -> Optional[np.ndarray]:
         """Download image from URL and return as numpy array."""
+        if cv2 is None:
+            return None
         try:
             with httpx.Client(timeout=10.0, follow_redirects=True) as client:
                 response = client.get(image_url)
@@ -124,6 +127,8 @@ class ReconstructionService(BaseService):
         """Select best quality texture from multiple extractions."""
         if not textures:
             return None
+        if cv2 is None:
+            return textures[0]
         scores = []
         for texture in textures:
             if texture is None or texture.size == 0:

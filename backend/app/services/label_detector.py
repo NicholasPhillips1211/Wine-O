@@ -10,7 +10,10 @@ import base64
 from typing import Optional, Tuple
 from dataclasses import dataclass
 
-import cv2
+try:
+    import cv2
+except Exception:  # pragma: no cover - optional dependency fallback
+    cv2 = None
 import numpy as np
 from PIL import Image
 
@@ -67,6 +70,8 @@ class LabelDetector:
             LabelDetectionResult with detection status and label region
         """
         if image is None or image.size == 0:
+            return LabelDetectionResult(detected=False)
+        if cv2 is None:
             return LabelDetectionResult(detected=False)
         
         # Convert to HSV for better color-based detection
@@ -174,6 +179,9 @@ class LabelDetector:
         Returns:
             Extracted label texture or None if detection failed
         """
+        if cv2 is None:
+            return None
+
         result = self.detect_label(image)
         
         if not result.detected or result.label_image is None:
@@ -219,6 +227,8 @@ class LabelDetector:
         """
         if image is None or image.size == 0:
             return ""
+        if cv2 is None:
+            return ""
         
         _, buffer = cv2.imencode('.png', image)
         return base64.b64encode(buffer).decode('utf-8')
@@ -233,6 +243,8 @@ class LabelDetector:
             Image as numpy array or None if decoding failed
         """
         try:
+            if cv2 is None:
+                return None
             image_data = base64.b64decode(b64_string)
             nparr = np.frombuffer(image_data, np.uint8)
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)

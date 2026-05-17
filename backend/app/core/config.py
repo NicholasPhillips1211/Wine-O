@@ -43,7 +43,7 @@ Usage in code:
 from enum import Enum
 from typing import Optional
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class OCRProvider(str, Enum):
@@ -171,6 +171,26 @@ class Settings(BaseSettings):
     MESH_OPTIMIZATION_ENABLE: bool = True
     MESH_VERTEX_LIMIT: int = 100000
     TEXTURE_RESOLUTION: int = 2048  # pixels
+    RECONSTRUCTION_ASYNC_ENABLED: bool = False
+
+    # --- Blender Worker Settings ---
+    BLENDER_WORKER_ENABLED: bool = False
+    BLENDER_BINARY: str = "blender"
+    BLENDER_SCRIPT_ROOT: str = "backend/app/reconstruction/blender/scripts"
+    BLENDER_TIMEOUT_SECONDS: int = 900
+    BLENDER_DOCKER_IMAGE: str = "wine-o/blender-worker:4.2"
+
+    # --- Mobile Optimization Settings ---
+    MOBILE_TRIANGLES_PREMIUM: int = 50000
+    MOBILE_TRIANGLES_MOBILE: int = 25000
+    MOBILE_TRIANGLES_LOW_LOD: int = 10000
+    MOBILE_ENABLE_DRACO: bool = True
+    MOBILE_ENABLE_KTX2: bool = True
+    MOBILE_ENABLE_BASISU: bool = True
+
+    # --- Export Validation Settings ---
+    EXPORT_MAX_SIZE_MB: float = 30.0
+    EXPORT_MAX_TRIANGLES: int = 50000
 
     # --- AI Services Settings ---
     AI_MODEL: AIModel = AIModel.YOLOV8
@@ -214,10 +234,11 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_REQUESTS_PER_MINUTE: int = 60
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = True
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+    )
 
     def get_database_url(self) -> str:
         """Get the database URL, potentially modified for testing."""
@@ -245,6 +266,18 @@ class Settings(BaseSettings):
             "mesh_optimization": self.MESH_OPTIMIZATION_ENABLE,
             "mesh_vertex_limit": self.MESH_VERTEX_LIMIT,
             "texture_resolution": self.TEXTURE_RESOLUTION,
+            "async_enabled": self.RECONSTRUCTION_ASYNC_ENABLED,
+            "blender_worker_enabled": self.BLENDER_WORKER_ENABLED,
+            "blender_timeout_seconds": self.BLENDER_TIMEOUT_SECONDS,
+            "blender_docker_image": self.BLENDER_DOCKER_IMAGE,
+            "mobile_triangles_premium": self.MOBILE_TRIANGLES_PREMIUM,
+            "mobile_triangles_mobile": self.MOBILE_TRIANGLES_MOBILE,
+            "mobile_triangles_low_lod": self.MOBILE_TRIANGLES_LOW_LOD,
+            "mobile_enable_draco": self.MOBILE_ENABLE_DRACO,
+            "mobile_enable_ktx2": self.MOBILE_ENABLE_KTX2,
+            "mobile_enable_basisu": self.MOBILE_ENABLE_BASISU,
+            "export_max_size_mb": self.EXPORT_MAX_SIZE_MB,
+            "export_max_triangles": self.EXPORT_MAX_TRIANGLES,
         }
 
     def get_ocr_settings(self) -> dict:
