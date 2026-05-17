@@ -1,0 +1,1 @@
+"""Blender worker integration domain."""

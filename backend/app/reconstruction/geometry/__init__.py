@@ -1,0 +1,1 @@
+"""Geometry reconstruction domain."""
