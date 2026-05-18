@@ -159,6 +159,7 @@ class Settings(BaseSettings):
     OCR_CONFIDENCE_THRESHOLD: float = 0.6
     OCR_LANGUAGE: str = "eng"
     OCR_TIMEOUT_SECONDS: int = 30
+    OCR_TESSERACT_CMD: str = ""
 
     # --- 3D Reconstruction Settings ---
     RECONSTRUCTION_QUALITY: ReconstructionQuality = ReconstructionQuality.MEDIUM
@@ -287,6 +288,7 @@ class Settings(BaseSettings):
             "confidence_threshold": self.OCR_CONFIDENCE_THRESHOLD,
             "language": self.OCR_LANGUAGE,
             "timeout_seconds": self.OCR_TIMEOUT_SECONDS,
+            "tesseract_cmd": self.OCR_TESSERACT_CMD,
         }
 
     def get_feature_flags(self) -> dict:

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from backend.app.core.config import settings
 from backend.app.schemas_jobs import JobStatusResponse, JobSubmissionResponse
 from backend.app.schemas_ocr import OCRAnalysisRequest, OCRAnalysisResult, OCRRequest, OCRResult, ParsedWineLabel, TextBlock
 from backend.app.services.job_service import JobService
@@ -79,7 +80,7 @@ async def parse_label(
 @router.post("/validate")
 async def validate_ocr_quality(
     ocr_result: OCRResult,
-    min_confidence: float = Query(0.7, ge=0.0, le=1.0),
+    min_confidence: float = Query(settings.OCR_CONFIDENCE_THRESHOLD, ge=0.0, le=1.0),
     ocr_service: OCRService = Depends(get_ocr_service)
 ):
     """Check if OCR quality meets minimum threshold."""

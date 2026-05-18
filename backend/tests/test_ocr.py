@@ -1,14 +1,18 @@
 """Tests for the OCR service and endpoints."""
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
+from backend.app.core.config import settings
 from backend.app.schemas_ocr import OCRAnalysisRequest, OCRRequest
 from backend.app.services.ocr_service import OCRService
 
 
 client = TestClient(app)
+REAL_LABEL_IMAGE = Path(__file__).resolve().parent / "fixtures" / "real_wine_label.jpg"
 
 
 class TestOCRService:
@@ -28,6 +32,17 @@ class TestOCRService:
         assert len(result.text_blocks) > 0
         assert result.overall_confidence > 0
         assert result.detected_language == "en"
+
+    def test_process_real_image_fixture(self, ocr_service):
+        """Test image processing against a real local image fixture."""
+        assert REAL_LABEL_IMAGE.exists()
+
+        result = ocr_service.process_image(OCRRequest(image_url=str(REAL_LABEL_IMAGE), language="en"))
+
+        assert result.image_url == str(REAL_LABEL_IMAGE)
+        assert isinstance(result.raw_text, str)
+        assert isinstance(result.text_blocks, list)
+        assert 0 <= result.overall_confidence <= 1
 
     def test_parse_wine_label(self, ocr_service):
         """Test label parsing via service."""
@@ -64,6 +79,16 @@ class TestOCRService:
         
         is_valid = ocr_service.validate_ocr_quality(ocr_result, min_confidence=0.8)
         assert isinstance(is_valid, bool)
+
+    def test_validate_ocr_quality_uses_config_default(self, ocr_service, monkeypatch):
+        """Test OCR quality validation falls back to configured threshold."""
+        monkeypatch.setattr(settings, "OCR_CONFIDENCE_THRESHOLD", 0.6)
+
+        ocr_result = OCRRequest(image_url="https://example.com/wine_label.jpg")
+        result = ocr_service.process_image(ocr_result)
+
+        low_confidence_result = result.model_copy(update={"overall_confidence": 0.55})
+        assert ocr_service.validate_ocr_quality(low_confidence_result) is False
 
     def test_preprocess_for_matching(self, ocr_service):
         """Test label preprocessing via service."""

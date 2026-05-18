@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import time
 from io import BytesIO
+from pathlib import Path
 
 import httpx
 
@@ -23,6 +24,7 @@ except ImportError:  # pragma: no cover - optional OCR backend.
 from datetime import datetime
 from typing import Optional
 
+from backend.app.core.config import OCRProvider, settings
 from backend.app.schemas_ocr import OCRAnalysisResult, OCRRequest, OCRResult, ParsedWineLabel, TextBlock
 from backend.app.services import BaseService
 
@@ -45,7 +47,17 @@ class OCRService(BaseService):
         """
         # Prefer a real OCR backend when one is installed; otherwise keep the
         # current deterministic fallback so the service remains usable in tests.
+        self._configure_tesseract_binary()
         self.ocr_engine = self._detect_ocr_backend()
+
+    def _configure_tesseract_binary(self) -> None:
+        """Apply the configured Tesseract binary path when one is provided."""
+        if pytesseract is None:
+            return
+
+        tesseract_cmd = settings.OCR_TESSERACT_CMD.strip()
+        if tesseract_cmd:
+            pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
 
     def _detect_ocr_backend(self) -> str:
         """Detect the best available OCR backend.
@@ -59,6 +71,9 @@ class OCRService(BaseService):
         """
         # If Pytesseract or PIL is missing, we can't run real OCR
         if pytesseract is None or Image is None:
+            return "synthetic"
+
+        if settings.OCR_PROVIDER != OCRProvider.TESSERACT:
             return "synthetic"
 
         # Try to verify the Tesseract binary is actually installed and accessible
@@ -89,6 +104,16 @@ class OCRService(BaseService):
         """
         if Image is None:
             raise RuntimeError("Pillow is required for OCR image loading.")
+
+        local_path = Path(image_url)
+        if local_path.exists():
+            image = Image.open(local_path)
+            return ImageOps.exif_transpose(image).convert("RGB") if ImageOps else image.convert("RGB")
+
+        if image_url.startswith("file://"):
+            file_path = Path(image_url.removeprefix("file://"))
+            image = Image.open(file_path)
+            return ImageOps.exif_transpose(image).convert("RGB") if ImageOps else image.convert("RGB")
 
         # Download image from the provided URL with a 20-second timeout
         response = httpx.get(image_url, timeout=20.0)
@@ -457,7 +482,7 @@ class OCRService(BaseService):
         # Return just the text blocks for caller to process
         return ocr_result.text_blocks
 
-    def validate_ocr_quality(self, ocr_result: OCRResult, min_confidence: float = 0.7) -> bool:
+    def validate_ocr_quality(self, ocr_result: OCRResult, min_confidence: Optional[float] = None) -> bool:
         """Check if OCR quality meets minimum threshold.
         
         Validates whether the overall OCR confidence for an extraction result meets
@@ -466,13 +491,14 @@ class OCRService(BaseService):
         
         Args:
             ocr_result: OCR result to validate
-            min_confidence: Minimum required confidence score (0.0-1.0, default 0.7)
+            min_confidence: Minimum required confidence score (0.0-1.0). Defaults to configured OCR threshold.
             
         Returns:
             True if OCR quality is acceptable (meets minimum confidence), False otherwise
         """
+        threshold = settings.OCR_CONFIDENCE_THRESHOLD if min_confidence is None else min_confidence
         # Simple confidence-based validation - returns true if score meets threshold
-        return ocr_result.overall_confidence >= min_confidence
+        return ocr_result.overall_confidence >= threshold
 
 
     def preprocess_for_matching(self, parsed_label: ParsedWineLabel) -> dict:
